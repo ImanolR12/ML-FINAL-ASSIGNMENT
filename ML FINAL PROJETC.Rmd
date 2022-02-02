@@ -1,0 +1,149 @@
+---
+title: "Final Project"
+author: "Thomas Imanol Rodriguez"
+date: "2/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## About the project
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+In this projet we have to predict how the people do exersice. We use some indicators for the data set.  
+
+
+## Packages
+
+```{r include=TRUE}
+library(caret)
+library(lattice)
+library(ggplot2)
+library(randomForest)
+library(rpart)
+library(gbm)
+
+```
+pml.training
+
+
+```{r include=TRUE}
+training <- read.csv("C:/Users/imano/Downloads/pml-training.csv")
+  
+testing<-read.csv("C:/Users/imano/Downloads/pml-testing.csv")
+dim(training)
+dim(testing)
+
+```
+
+## Cleaning data
+
+If the variable contains some data that is definited as NA, so, i will remove.
+
+```{r include=TRUE}
+datataining <- training[, colSums(is.na(training)) == 0]
+
+dim(datataining)
+
+datatesting <- testing[, colSums(is.na(testing)) == 0]
+
+dim(datatesting)
+
+#Also i removed the variables that had zero variance
+nzv<-nearZeroVar(datataining)
+nzv1<-nearZeroVar(datatesting)
+
+datataining1 <- datataining[, -nzv]
+
+datatesting1 <- datatesting[,-nzv1]
+
+dim(datataining1)
+
+dim(datatesting1)
+
+# Moreover, i removed rows like raw time stamp, name, etc. Those variables dont keep relation with how
+# someone does some exercise
+
+datatrain<-datataining1[, -c(1:6)]
+datatest<-datatesting1[, -c(1:6)]
+
+```
+
+## Preparing data set
+```{r include=TRUE}
+intrain <- createDataPartition(datatrain$classe, 
+                               p=0.7, list = FALSE)
+
+train<-datatrain[intrain,]
+test <- datatrain[-intrain,]
+
+# cross validation
+
+crossval <- trainControl(method = "cv", number = 10, verboseIter = FALSE)
+
+
+```
+## Build model
+# Decision Tree
+```{r include=TRUE}
+mod<-train(classe~., method="rpart", data = train, trControl= crossval)
+
+pred<-predict(mod, test)
+dtree<-confusionMatrix(pred,  factor(test$classe))
+dtree$overall["Accuracy"]#0.4868309
+
+```
+
+
+```{r mod, echo=FALSE}
+plot(mod)
+
+```
+
+
+
+
+# Gradient Bossted trees
+```{r include=TRUE}
+mod2<-train(classe~., method="gbm", data = train, trControl= crossval)
+pred2<-predict(mod2, test)
+gbm<-confusionMatrix(pred2,factor(test$classe))
+gbm$overall["Accuracy"]# 0.9587086 
+```
+
+```{r mod2, echo=FALSE}
+plot(mod2)
+
+```
+
+# Support Vector Machine
+```{r include=TRUE}
+mod3<-train(classe~.,method="svmLinear", data=train, trControl=crossval)
+predict3<-predict(mod3, test)
+svm<-confusionMatrix(predict3,factor(test$classe))
+svm$overall["Accuracy"]#0.7753611
+
+```
+
+# Random Forest
+This model didnt run in r markdown, but the accuracy was 0.9268 less than GBT
+
+mod1<-train(classe~., method="rf", data = train, trControl= crossval)
+pred1<-predict(mod1, test)
+rf<-confusionMatrix(pred1,factor(test$classe))
+rf$overall["Accuracy"]#0.9268309 
+
+
+
+# In this case the Gradient Bossted trees has the best performance in relation with the other models
+#Also, it shows the most higher value of accuracy that is 0.9587
+# I made my predictions
+
+
+```{r include=TRUE}
+predic<-predict(mod2, datatest)
+predic
+
+
+```
